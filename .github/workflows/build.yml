@@ -17,7 +17,6 @@ jobs:
       - name: Install host build deps
         run: |
           sudo apt-get update
-          # docker is preinstalled on ubuntu-24.04 runners
           sudo apt-get install -y --no-install-recommends \
             debootstrap qemu-user-static binfmt-support \
             kpartx parted gdisk dosfstools xz-utils bmap-tools \
@@ -39,6 +38,14 @@ jobs:
 
       - name: Build rootfs
         run: sudo ./build.sh rootfs
+
+      - name: Inject Kali and SDR Tools
+        run: |
+          ROOTFS=$(sudo find . -maxdepth 3 -type d -name "rootfs" | head -n 1)
+          sudo cp scripts/install_custom_tools.sh $ROOTFS/tmp/
+          sudo chmod +x $ROOTFS/tmp/install_custom_tools.sh
+          sudo chroot $ROOTFS /bin/bash /tmp/install_custom_tools.sh
+          sudo rm $ROOTFS/tmp/install_custom_tools.sh
 
       - name: Pack image
         run: sudo ./build.sh image
