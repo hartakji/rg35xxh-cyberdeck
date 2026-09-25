@@ -10,7 +10,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 180
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@v4
 
@@ -41,11 +41,17 @@ jobs:
 
       - name: Inject Kali and SDR Tools
         run: |
-          ROOTFS=$(sudo find . -maxdepth 3 -type d -name "rootfs" | head -n 1)
-          sudo cp scripts/install_custom_tools.sh $ROOTFS/tmp/
-          sudo chmod +x $ROOTFS/tmp/install_custom_tools.sh
-          sudo chroot $ROOTFS /bin/bash /tmp/install_custom_tools.sh
-          sudo rm $ROOTFS/tmp/install_custom_tools.sh
+          ROOTFS=work/rootfs
+          [ -d "$ROOTFS/etc" ] || { echo "rootfs not found at $ROOTFS"; ls -la work/; exit 1; }
+          sudo cp scripts/install_custom_tools.sh "$ROOTFS/tmp/"
+          sudo chmod +x "$ROOTFS/tmp/install_custom_tools.sh"
+          sudo cp /etc/resolv.conf "$ROOTFS/etc/resolv.conf"
+          for m in proc sys dev dev/pts; do sudo mount --bind /$m "$ROOTFS/$m"; done
+          sudo chroot "$ROOTFS" /bin/bash /tmp/install_custom_tools.sh
+          STATUS=$?
+          sudo rm -f "$ROOTFS/tmp/install_custom_tools.sh"
+          for m in dev/pts dev sys proc; do sudo umount -l "$ROOTFS/$m" 2>/dev/null || true; done
+          exit $STATUS
 
       - name: Pack image
         run: sudo ./build.sh image

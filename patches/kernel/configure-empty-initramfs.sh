@@ -10,8 +10,15 @@
 # mount mmcblk0p2 without any initramfs.
 set -euo pipefail
 
-KSRC=/work/build.ROCKNIX-H700.aarch64/build/linux-7.0.2
-INITRAMFS_DIR=/work/build.ROCKNIX-H700.aarch64/initramfs
+# Auto-detect kernel source dir (VERSIONS.KERNEL_NAME changes over time).
+# Allow override via KSRC env for manual runs.
+if [ -z "${KSRC:-}" ]; then
+  KSRC="$(ls -d /work/build.ROCKNIX-*/build/linux-* 2>/dev/null | head -1)"
+fi
+BUILDROOT="$(ls -d /work/build.ROCKNIX-* 2>/dev/null | head -1)"
+INITRAMFS_DIR="${INITRAMFS_DIR:-$BUILDROOT/initramfs}"
+
+[ -n "$KSRC" ] && [ -d "$KSRC" ] || { echo "[FAIL] kernel source not found: $KSRC" >&2; exit 1; }
 
 # 1. Wipe ROCKNIX's initramfs source dir → cpio will be empty
 if [ -d "$INITRAMFS_DIR" ]; then
@@ -21,7 +28,7 @@ fi
 
 # 2. Empty kernel .config setting (belt-and-braces) + flip MMC builtin + HID userspace
 cd "$KSRC"
-export PATH=/work/build.ROCKNIX-H700.aarch64/toolchain/bin:$PATH
+export PATH="$BUILDROOT/toolchain/bin:$PATH"
 export ARCH=arm64
 export CROSS_COMPILE=aarch64-rocknix-linux-gnu-
 

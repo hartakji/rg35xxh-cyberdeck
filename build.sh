@@ -38,7 +38,7 @@ stage_docker() {
   # Install extra build deps and commit them into the image (otherwise --rm discards them)
   local cid
   cid="$(docker create --user root rocknix-builder \
-    bash -c "apt-get update -qq && apt-get install -y -qq wget xmlstarlet automake parted xxd python-is-python3")"
+    bash -c "apt-get update -qq && apt-get install -y -qq wget xmlstarlet automake parted xxd python-is-python3 flex bison bc libssl-dev libelf-dev")"
   docker start -a "$cid"
   docker commit "$cid" rocknix-builder >/dev/null
   docker rm "$cid" >/dev/null

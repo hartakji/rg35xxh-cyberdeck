@@ -12,7 +12,7 @@ mkdir -p "$OUT"
 if [ ! -d "$OUT/.git" ]; then
   git clone --depth=1 https://github.com/ROCKNIX/rocknix-joypad.git "$OUT"
 fi
-( cd "$OUT" && git fetch --depth=1 origin 7647fdb0fc89cd69b284903bf7707e861df5dc7e && git checkout 7647fdb0fc89cd69b284903bf7707e861df5dc7e )
+( cd "$OUT" && git fetch --depth=1 origin master && git checkout FETCH_HEAD )
 
 docker run --rm \
   -v "$WORK/rocknix:/work" -v "$OUT:/joypad" \
