@@ -41,7 +41,7 @@ mkfs.vfat -F 32 -n BOOT   "$P1"
 mkfs.ext4 -F   -L rootfs "$P2"
 
 # Install u-boot SPL @ 8KB
-UBOOT="$WORK/rocknix/build.ROCKNIX-${DEVICE}.${ARCH}/install_pkg/u-boot-"*"/usr/share/bootloader/u-boot-sunxi-with-spl.bin"
+UBOOT="$WORK/rocknix/build.ROCKNIX-${DEVICE}.${ARCH}/install_pkg/u-boot-"*"/usr/share/bootloader/H700_DDR4_u-boot-sunxi-with-spl.bin"
 UBOOT=$(ls -1 $UBOOT | head -1)
 dd if="$UBOOT" of="$LOOP" bs=1024 seek=8 conv=notrunc
 

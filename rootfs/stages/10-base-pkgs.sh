@@ -21,6 +21,7 @@ run_chroot "
     openssh-server cron rsync wget \
     pulseaudio pulseaudio-utils alsa-utils \
     network-manager network-manager-gnome dnsmasq-base \
+    wpasupplicant iw wireless-regdb firmware-realtek usbutils aircrack-ng nmap arp-scan python3-pygame python3-psutil vim \
     bluez bluez-tools blueman rfkill \
     python3 python3-evdev \
     upower brightnessctl \

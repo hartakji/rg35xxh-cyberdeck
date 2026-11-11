@@ -8,7 +8,7 @@ ROCKNIX_BRANCH=next
 DEBIAN_RELEASE=trixie
 DEBIAN_MIRROR=http://deb.debian.org/debian
 
-KERNEL_NAME=linux-7.1.2
+KERNEL_NAME=linux-7.2
 TOOLCHAIN_GCC=16.2.0
 
 UBOOT_PKG=u-boot

@@ -78,6 +78,42 @@ stage_dtb_patch() {
   python3 "$ROOT/scripts/patch-h700-dtb-regulators.py" "$dtb"
 }
 
+stage_joypad() {
+  log "stage: build joypad module against ${KERNEL_NAME}"
+  local ksrc="$WORK/rocknix/build.ROCKNIX-${DEVICE}.${ARCH}/build/${KERNEL_NAME}"
+  local image="$ksrc/arch/arm64/boot/Image"
+  local ko="$WORK/rocknix-joypad-build/rocknix-singleadc-joypad.ko"
+
+  [ -f "$image" ] || die "kernel not built yet (missing $image)"
+
+  if [ -f "$ko" ] && [ "$ko" -nt "$image" ] && [ "${RG_FORCE_JOYPAD:-0}" != "1" ]; then
+    log "joypad module up to date, skipping (RG_FORCE_JOYPAD=1 to override)"
+  else
+    bash "$ROOT/scripts/build-joypad-module.sh"
+  fi
+
+  [ -f "$ko" ] || die "joypad module not produced: $ko"
+
+  # the module must match the kernel it will run on
+  local krel vermagic
+  krel="$(cat "$ksrc/include/config/kernel.release")"
+  vermagic="$(modinfo -F vermagic "$ko" | awk '{print $1}')"
+  [ "$vermagic" = "$krel" ] || die "vermagic mismatch: module=$vermagic kernel=$krel (RG_FORCE_JOYPAD=1 to rebuild)"
+  log "joypad module OK (vermagic $vermagic)"
+}
+
+stage_rtw88usb() {
+  log "stage: build rtw88_8822bu into kernel"
+  local ksrc="$WORK/rocknix/build.ROCKNIX-${DEVICE}.${ARCH}/build/${KERNEL_NAME}"
+  [ -f "$ksrc/arch/arm64/boot/Image" ] || die "kernel not built yet"
+  if grep -q "^CONFIG_RTW88_8822BU=y" "$ksrc/.config" && [ "${RG_FORCE_RTW88USB:-0}" != "1" ]; then
+    log "8822BU already in kernel config, skipping (RG_FORCE_RTW88USB=1 to override)"
+    return 0
+  fi
+  bash "$ROOT/scripts/build-rtw88-usb.sh"
+  grep -q "^CONFIG_RTW88_8822BU=y" "$ksrc/.config" || die "CONFIG_RTW88_8822BU not set to y"
+}
+
 stage_rootfs() {
   log "stage: build Debian Trixie rootfs"
   local rootfs="$WORK/rootfs"
@@ -106,7 +142,9 @@ case "$STAGE" in
   deps)   check_deps ;;
   fetch)  check_deps; stage_fetch ;;
   docker) check_deps; stage_fetch; stage_docker ;;
-  kernel) check_deps; stage_fetch; stage_docker; stage_kernel; stage_dtb_patch ;;
+  kernel) check_deps; stage_fetch; stage_docker; stage_kernel; stage_dtb_patch; stage_joypad ;;
+  joypad) check_deps; stage_joypad ;;
+  rtw88usb) check_deps; stage_rtw88usb ;;
   rootfs) check_deps; stage_rootfs ;;
   image)  check_deps; stage_image ;;
   all)
@@ -115,8 +153,10 @@ case "$STAGE" in
     stage_docker
     stage_kernel
     stage_dtb_patch
+    stage_rtw88usb
+    stage_joypad
     stage_rootfs
     stage_image
     ;;
-  *) die "unknown stage: $STAGE (try: all|fetch|docker|kernel|rootfs|image)" ;;
+  *) die "unknown stage: $STAGE (try: all|fetch|docker|kernel|joypad|rootfs|image)" ;;
 esac
