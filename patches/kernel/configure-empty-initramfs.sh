@@ -35,9 +35,19 @@ export CROSS_COMPILE=aarch64-rocknix-linux-gnu-
 ./scripts/config --file .config \
   --set-str  INITRAMFS_SOURCE "" \
   -e MMC -e MMC_BLOCK -e MMC_SUNXI \
+  -e USB_CONFIGFS -e USB_CONFIGFS_MASS_STORAGE -e USB_CONFIGFS_F_FS \
   -e HIDRAW -m UHID -e HID_BATTERY_STRENGTH
 
 make olddefconfig </dev/null
+
+grep -q '^CONFIG_USB_CONFIGFS_MASS_STORAGE=y$' .config || {
+  echo "[FAIL] kernel config lacks USB_CONFIGFS_MASS_STORAGE" >&2
+  exit 1
+}
+grep -q '^CONFIG_USB_CONFIGFS_F_FS=y$' .config || {
+  echo "[FAIL] kernel config lacks USB_CONFIGFS_F_FS" >&2
+  exit 1
+}
 
 # 3. Force regen cpio + relink Image
 rm -f usr/initramfs_data.cpio usr/initramfs_data.cpio.gz \

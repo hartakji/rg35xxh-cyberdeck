@@ -7,6 +7,12 @@ OVERLAY="$2"
 
 rsync -aHAX "$OVERLAY/" "$ROOTFS/"
 
+# Install the MTP gadget helpers alongside overlay-provided scripts.
+install -D -m 0755 "$(dirname "$0")/../../scripts/usb-mtp-setup.sh" \
+  "$ROOTFS/usr/local/bin/usb-mtp-setup"
+install -D -m 0755 "$(dirname "$0")/../../scripts/usb-mtp-stop.sh" \
+  "$ROOTFS/usr/local/bin/usb-mtp-stop"
+
 # Make scripts executable
 chmod +x "$ROOTFS"/usr/local/bin/* 2>/dev/null || true
 chmod +x "$ROOTFS"/usr/local/sbin/* 2>/dev/null || true
@@ -21,7 +27,8 @@ run() {
 run "
   systemctl enable joy2mouse.service || true
   systemctl enable wifi-watchdog.service || true
-  systemctl enable usb-mtp.service || true
+  systemctl disable usb-mtp.service || true
+  systemctl disable umtp-responder.service || true
   systemctl enable expand-rootfs.service || true
 "
 

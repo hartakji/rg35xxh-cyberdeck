@@ -1,10 +1,10 @@
 [Unit]
 Description=USB MTP Gadget (expose folder to PC as Android-style MTP device)
-After=local-fs.target
+After=local-fs.target systemd-modules-load.service
 Conflicts=usb-massstorage.service
 
 [Service]
-Type=forking
+Type=oneshot
 ExecStart=/usr/local/bin/usb-mtp-setup
 ExecStop=/usr/local/bin/usb-mtp-stop
 RemainAfterExit=yes

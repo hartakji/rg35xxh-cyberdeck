@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CONFIG=/etc/default/usb-massstorage
+USB_MASS_STORAGE_MODE=disk
+USB_MASS_STORAGE_IMAGE=/var/lib/usb-gadget/usb-massstorage.img
+USB_MASS_STORAGE_SIZE=1G
+[ ! -r "$CONFIG" ] || . "$CONFIG"
+
+G=/sys/kernel/config/usb_gadget/rg35xxh-ums
+
+fail() {
+    echo "[usb-massstorage] $*" >&2
+    exit 1
+}
+
+[ "$(id -u)" = 0 ] || fail "must run as root"
+[[ "$USB_MASS_STORAGE_IMAGE" = /* ]] || fail "image path must be absolute"
+
+case "$USB_MASS_STORAGE_MODE" in
+    disk) ;;
+    cdrom)
+        [ -f "$USB_MASS_STORAGE_IMAGE" ] || fail "ISO image not found: $USB_MASS_STORAGE_IMAGE"
+        [ -s "$USB_MASS_STORAGE_IMAGE" ] || fail "ISO image is empty: $USB_MASS_STORAGE_IMAGE"
+        ;;
+    *)
+        fail "USB_MASS_STORAGE_MODE must be 'disk' or 'cdrom'"
+        ;;
+esac
+
+mkdir -p /sys/kernel/config
+if ! mountpoint -q /sys/kernel/config; then
+    mount -t configfs configfs /sys/kernel/config
+fi
+grep -q ' /sys/kernel/config configfs ' /proc/mounts || fail "configfs is not mounted"
+
+modprobe libcomposite
+modprobe usb_f_mass_storage
+
+UDC=
+for entry in /sys/class/udc/*; do
+    if [ -e "$entry" ]; then
+        UDC=${entry##*/}
+        break
+    fi
+done
+[ -n "$UDC" ] || fail "no USB device controller found; use the left USB-C OTG port"
+
+if [ "$USB_MASS_STORAGE_MODE" = "disk" ]; then
+    mkdir -p "$(dirname "$USB_MASS_STORAGE_IMAGE")"
+    if [ ! -e "$USB_MASS_STORAGE_IMAGE" ]; then
+        tmp=$(mktemp "${USB_MASS_STORAGE_IMAGE}.tmp.XXXXXX")
+        trap 'rm -f "$tmp"' EXIT
+        truncate -s "$USB_MASS_STORAGE_SIZE" "$tmp"
+        mkfs.vfat -F 32 -n RG35XXH "$tmp"
+        mv "$tmp" "$USB_MASS_STORAGE_IMAGE"
+        trap - EXIT
+    fi
+    [ -f "$USB_MASS_STORAGE_IMAGE" ] || fail "backing image is not a regular file"
+fi
+
+if [ -d "$G" ]; then
+    /usr/local/bin/usb-massstorage-stop || fail "could not remove stale gadget at $G"
+fi
+
+mkdir -p "$G"
+echo 0x1d6b > "$G/idVendor"
+echo 0x0104 > "$G/idProduct"
+echo 0x0100 > "$G/bcdDevice"
+echo 0x0200 > "$G/bcdUSB"
+
+mkdir -p "$G/strings/0x409"
+echo "rg35xxh-ums" > "$G/strings/0x409/serialnumber"
+echo "Anbernic" > "$G/strings/0x409/manufacturer"
+echo "RG35XXH USB Storage" > "$G/strings/0x409/product"
+
+mkdir -p "$G/configs/c.1/strings/0x409"
+echo "Mass Storage" > "$G/configs/c.1/strings/0x409/configuration"
+echo 250 > "$G/configs/c.1/MaxPower"
+
+mkdir -p "$G/functions/mass_storage.0"
+echo 1 > "$G/functions/mass_storage.0/lun.0/removable"
+if [ "$USB_MASS_STORAGE_MODE" = "cdrom" ]; then
+    echo 1 > "$G/functions/mass_storage.0/lun.0/cdrom"
+    echo 1 > "$G/functions/mass_storage.0/lun.0/ro"
+    echo "USB CD-ROM" > "$G/configs/c.1/strings/0x409/configuration"
+else
+    echo 0 > "$G/functions/mass_storage.0/lun.0/cdrom"
+    echo 0 > "$G/functions/mass_storage.0/lun.0/ro"
+fi
+printf '%s\n' "$USB_MASS_STORAGE_IMAGE" > "$G/functions/mass_storage.0/lun.0/file"
+ln -s "$G/functions/mass_storage.0" "$G/configs/c.1/mass_storage.0"
+printf '%s\n' "$UDC" > "$G/UDC"
+
+echo "[usb-massstorage] gadget bound to $UDC in $USB_MASS_STORAGE_MODE mode using $USB_MASS_STORAGE_IMAGE"

@@ -16,7 +16,7 @@
 
 | Port | Controller | Role | Notes |
 |---|---|---|---|
-| USB-C #1 (left) | MUSB | OTG | Used for charge + gadget mode (MTP/ECM) |
+| USB-C #1 (left) | MUSB | OTG | Used for charge + MTP or mass-storage gadget modes; ECM currently has NO-CARRIER |
 | USB-C #2 (right) | EHCI | host-only | Silicon limit, cannot be device |
 
 ## Display

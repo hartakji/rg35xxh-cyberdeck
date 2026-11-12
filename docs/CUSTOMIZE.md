@@ -22,7 +22,7 @@ Put them under `overlay/home/<user>/...` and `chown` in `rootfs/stages/50-overla
 
 ## Change default user / password
 
-Edit `VERSIONS` (`TARGET_USER`) and `rootfs/stages/20-xfce.sh` (`chpasswd` line). Don't ship a default password publicly — encourage first-boot change.
+Set `TARGET_USER` and `TARGET_PASSWORD` in `VERSIONS` before building. `TARGET_PASSWORD` is stored in plaintext; use a private value locally and do not publish or commit it.
 
 ## Rev6 panel variant
 

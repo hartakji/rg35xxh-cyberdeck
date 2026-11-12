@@ -1,0 +1,3 @@
+USB_MASS_STORAGE_MODE=disk
+USB_MASS_STORAGE_IMAGE=/var/lib/usb-gadget/usb-massstorage.img
+USB_MASS_STORAGE_SIZE=1G

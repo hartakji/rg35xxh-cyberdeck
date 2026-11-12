@@ -19,8 +19,15 @@ build.sh all
 |---|---|
 | Tweak overlay file (script, systemd unit) | `RG_FORCE_ROOTFS=1 ./build.sh rootfs && sudo ./build.sh image` |
 | Change a rootfs stage | same as above |
-| Bump a kernel patch | `RG_FORCE_KERNEL=1 ./build.sh kernel image` |
+| Bump a kernel patch | `RG_FORCE_KERNEL=1 ./build.sh kernel`, then `sudo ./build.sh image` |
+| Enable USB mass-storage gadget kernel support | `RG_FORCE_KERNEL=1 ./build.sh kernel`, then rebuild rootfs and image |
 | Just repack image | `sudo ./build.sh image` |
+
+For the USB gadget kernel change, run the rootfs and image stages separately after `kernel`:
+```bash
+RG_FORCE_ROOTFS=1 ./build.sh rootfs
+sudo ./build.sh image
+```
 
 Mount the resulting `.img` on a loop device to inspect without flashing:
 ```bash
@@ -32,7 +39,7 @@ sudo umount /mnt && sudo losetup -d $LOOP
 
 ## Why a custom kernel rebuild?
 
-ROCKNIX ships `linux-7.0.2` with `CONFIG_INITRAMFS_SOURCE` pointing at its recovery initramfs. That cpio gets **embedded into the `Image` binary**, so any "use ROCKNIX kernel + my own rootfs" hybrid drops you into a busybox `/ #` shell instead of running Debian's `/sbin/init`. We re-run `make Image` with the source emptied. Same trip flips `MMC=y` so the kernel doesn't need an initramfs to mount root, and `HIDRAW=y / UHID=m` so BLE keyboards work via HID-over-GATT.
+ROCKNIX ships `linux-7.0.2` with `CONFIG_INITRAMFS_SOURCE` pointing at its recovery initramfs. That cpio gets **embedded into the `Image` binary**, so any "use ROCKNIX kernel + my own rootfs" hybrid drops you into a busybox `/ #` shell instead of running Debian's `/sbin/init`. We re-run `make Image` with the source emptied. The same kernel configuration enables built-in MMC support, HIDRAW/UHID for BLE keyboards, configfs mass-storage support, and FunctionFS for MTP.
 
 See `docs/PITFALLS.md` for the full backstory.
 

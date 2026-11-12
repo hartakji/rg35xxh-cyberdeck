@@ -32,7 +32,7 @@ Fix: edit `action_on_low=0` `action_on_critical=0`, then `chattr +i` the file so
 
 ## 6. MUSB endpoint exhaustion
 
-H700 has **one** OTG controller (port 1 MUSB; port 2 is host-only silicon). Trying to compose RNDIS+ECM+MTP fails with `udc musb-hdrc.5.auto: failed to start: -524 ENOTSUPP`. We use **ECM + ffs.mtp** only.
+H700 has **one** OTG controller (port 1 MUSB; port 2 is host-only silicon). Trying to compose RNDIS+ECM+MTP fails with `udc musb-hdrc.5.auto: failed to start: -524 ENOTSUPP`. The image provides MTP and standalone mass storage as mutually exclusive modes. ECM is not packaged because it enumerates without reliable carrier on MUSB.
 
 ## 7. ECM gadget enumerates as NO-CARRIER
 

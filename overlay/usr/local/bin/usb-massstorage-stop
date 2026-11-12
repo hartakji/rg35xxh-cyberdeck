@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+G=/sys/kernel/config/usb_gadget/rg35xxh-ums
+
+if [ -d "$G" ]; then
+    bound_udc=$(cat "$G/UDC")
+    if [ -n "$bound_udc" ]; then
+        printf '\n' > "$G/UDC" 2>/dev/null ||
+            echo "[usb-massstorage] UDC unbind unavailable; continuing stale-gadget cleanup" >&2
+    fi
+    sync
+    if [ -e "$G/functions/mass_storage.0/lun.0/file" ]; then
+        printf '\n' > "$G/functions/mass_storage.0/lun.0/file"
+    fi
+    rm -f "$G/configs/c.1/mass_storage.0"
+    for dir in \
+        "$G/functions/mass_storage.0" \
+        "$G/configs/c.1/strings/0x409" \
+        "$G/configs/c.1" \
+        "$G/strings/0x409" \
+        "$G"; do
+        if [ -d "$dir" ]; then
+            rmdir "$dir" || {
+                echo "[usb-massstorage] could not remove configfs directory: $dir" >&2
+                exit 1
+            }
+        fi
+    done
+fi
+
+echo "[usb-massstorage] stopped"

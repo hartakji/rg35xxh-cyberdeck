@@ -1,6 +1,6 @@
 # RG35XXH Cyberdeck
 
-Turn an [Anbernic RG35XXH](https://anbernic.com/) (Allwinner H700) handheld into a portable Debian Trixie cyberdeck — full XFCE desktop, working WiFi/Bluetooth, joystick-as-mouse, USB-OTG MTP file share, Tailscale, audio, brightness keys, battery widget.
+Turn an [Anbernic RG35XXH](https://anbernic.com/) (Allwinner H700) handheld into a portable Debian Trixie cyberdeck — full XFCE desktop, working WiFi/Bluetooth, joystick-as-mouse, USB-OTG MTP and mass storage, Tailscale, audio, brightness keys, battery widget.
 
 **Status:** alpha. Builds reproducibly via CI. PRs welcome.
 
@@ -16,7 +16,7 @@ Turn an [Anbernic RG35XXH](https://anbernic.com/) (Allwinner H700) handheld into
 - **Audio** — speaker + volume keys via PulseAudio
 - **Bluetooth keyboards** — HIDRAW/UHID built into kernel (BLE HOG works)
 - **WiFi watchdog** — recovers from RTL8821CS "ghost connected" state
-- **USB OTG** — port 1 = MTP (umtprd) + ECM ethernet to PC
+- **USB OTG** — manually started MTP and mass-storage gadget modes
 - **mpv + play480** helper — auto-transcode 1080p → 480p (no working VPU on H700)
 
 ## Quick start (use prebuilt)
@@ -28,7 +28,7 @@ Turn an [Anbernic RG35XXH](https://anbernic.com/) (Allwinner H700) handheld into
    sudo bmaptool copy rg35xxh-cyberdeck-*.img /dev/sdX
    ```
 3. Insert into the **TF1** slot of the RG35XXH, power on, wait ~2 min for first boot.
-4. Default credentials: `hataketsu` / `kamikaze` (sudo passwordless). Change immediately.
+4. Default credentials: `hataketsu` / `kamikaze` (set by `TARGET_USER` / `TARGET_PASSWORD` in `VERSIONS` for source builds; sudo is passwordless). Change immediately.
 5. Connect WiFi via panel applet, then optionally `sudo tailscale up` for remote SSH.
 
 ## Build it yourself (reproducible)
@@ -47,6 +47,46 @@ cd rg35xxh-cyberdeck
 ```
 
 CI builds every push and attaches artifacts to a draft release on tags.
+
+## USB OTG modes
+
+MTP and mass storage are separate manual modes on the **left USB-C OTG** port; neither starts at boot. They conflict, so only one can be active at a time.
+
+```bash
+# Android-style file transfer
+sudo systemctl start usb-mtp
+sudo systemctl stop usb-mtp
+
+# USB mass storage
+sudo systemctl start usb-massstorage
+```
+
+Mass storage can expose either a bootable ISO as a read-only USB CD-ROM or a writable disk image. Connect the handheld to a host computer with a data-capable cable. Eject media on the host before stopping the active mode:
+
+```bash
+sudo systemctl stop usb-massstorage
+```
+
+Choose either mass-storage mode by editing `/etc/default/usb-massstorage`; stop the service before changing modes and start it again afterward.
+
+**Bootable ISO (read-only USB CD-ROM):** put the ISO at the configured path, then use:
+
+```ini
+USB_MASS_STORAGE_MODE=cdrom
+USB_MASS_STORAGE_IMAGE=/var/lib/usb-gadget/bootable.iso
+```
+
+**Writable USB disk image:** the first start creates a FAT32 image with the configured initial size if the image path does not already exist:
+
+```ini
+USB_MASS_STORAGE_MODE=disk
+USB_MASS_STORAGE_IMAGE=/var/lib/usb-gadget/usb-massstorage.img
+USB_MASS_STORAGE_SIZE=1G
+```
+
+In `disk` mode an existing raw bootable disk image is presented as-is and read/write; only a missing image path is initialized as FAT32. In `cdrom` mode, the ISO is read-only. Booting is done by the connected host and requires bootable media plus firmware that supports the presented USB device. USB Ethernet (ECM) is not packaged as a mode because it currently enumerates without reliable carrier on this hardware; RNDIS combinations also exceed the MUSB controller limits.
+
+`USB_MASS_STORAGE_SIZE` applies only when first creating a `disk` image; changing it later does not resize the persistent image. The build-time password is stored in plaintext in `VERSIONS`; set a private password locally and do not publish or commit it. MTP is not enabled by default.
 
 ## Repository layout
 
@@ -84,7 +124,8 @@ docs/                 Architecture, build internals, pitfalls, hardware
 | Audio out | ✅ | PulseAudio, vol keys bound |
 | Brightness | ✅ | XF86 keys via xfpm |
 | Battery widget | ✅ | xfce4-battery-plugin w/ false-low fix |
-| USB OTG MTP | ✅ | umtprd on port 1 |
+| USB OTG MTP | ✅ | Manual systemd start |
+| USB OTG mass storage | ✅ | Manual start; ISO CD-ROM or writable disk image |
 | USB Ethernet (ECM) | ⚠️ | enumerates but NO-CARRIER on MUSB; open issue |
 | Video decode | ❌ | No VPU on mainline H700 — use `play480` helper |
 

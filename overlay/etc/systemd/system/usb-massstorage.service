@@ -1,6 +1,7 @@
 [Unit]
 Description=USB Mass Storage Gadget (expose RG35XXH as USB drive when plugged into PC)
-After=local-fs.target
+After=local-fs.target systemd-modules-load.service
+Conflicts=usb-mtp.service
 
 [Service]
 Type=oneshot
